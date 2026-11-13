@@ -17,8 +17,6 @@ Tất cả các biến dưới đây đều nhận giá trị Đúng hoặc Sai 
 *   **$s_{i,t}$**: Nguyên công $i$ đã bắt đầu vào thời điểm $t$ hoặc trước đó.
 *   **$f_{i,t}$**: Nguyên công $i$ đã hoàn thành vào thời điểm $t$ hoặc trước đó.
 *   **$a_{i,k,t}$**: Nguyên công $i$ đang chạy trên máy $k$ trong slot $t$.
-*   **$b_{i,k,t}$**: Nguyên công $i$ đang chờ trong bộ đệm của máy $k$ tại slot $t$.
-*   **$busy_{k,t}$**: Máy $k$ đang xử lý một nguyên công trong slot $t$.
 
 ## 3. Quy tắc mã hóa thời gian (Order encoding of time)
 Phần này định nghĩa mối quan hệ logic của các biến trạng thái thời gian. Quy tắc chung cho phép kéo theo $a \rightarrow b$ là mệnh đề $(\neg a \lor b)$.

@@ -9,17 +9,22 @@ solve() liên tiếp, chỉ thêm/thay đổi ràng buộc qua assumptions.
 """
 
 import threading
+import time
+from itertools import combinations
+from math import isqrt
 from pysat.solvers import Glucose4
 
 
 class SATWrapper:
     """Wrapper trừu tượng cho PySAT solver."""
 
-    def __init__(self):
-        self._solver = Glucose4()
+    def __init__(self, engine=Glucose4):
+        self._engine = engine
+        self._solver = engine()
         self._var_map: dict[str, int] = {}      # name  -> id
         self._rev_map: dict[int, str] = {}       # id    -> name
         self._next_id = 1
+        self.search_time_s = 0.0
 
     # ----- Quản lý biến -----
 
@@ -51,16 +56,42 @@ class SATWrapper:
         """Ép buộc đúng 1 literal trong *lits* là TRUE.
 
         • At-least-one : (l₁ ∨ l₂ ∨ … ∨ lₙ)
-        • At-most-one  : pairwise  (¬lᵢ ∨ ¬lⱼ)  ∀ i < j
+        • At-most-one  : product encoding theo hàng và cột.
         """
         if not lits:
             return
         # at-least-one
         self._solver.add_clause(lits)
-        # at-most-one (pairwise)
-        for i in range(len(lits)):
-            for j in range(i + 1, len(lits)):
-                self._solver.add_clause([-lits[i], -lits[j]])
+        # AMO pairwise cũ:
+        # for i in range(len(lits)):
+        #     for j in range(i + 1, len(lits)):
+        #         self._solver.add_clause([-lits[i], -lits[j]])
+        self.add_at_most_one(lits)
+
+    def add_at_most_one(self, lits: list[int]):
+        """Gán mỗi literal vào một ô, cho phép chọn tối đa một hàng và một cột."""
+        n = len(lits)
+        if n < 2:
+            return
+        if n == 2:
+            self.add_clause([-lits[0], -lits[1]])
+            return
+
+        width = isqrt(n - 1) + 1
+        height = (n + width - 1) // width
+        # Dùng ID mới cho biến phụ, kể cả khi caller truyền literal số trực tiếp.
+        first = max(self._next_id, self._solver.nof_vars() + 1, max(map(abs, lits)) + 1)
+        rows = range(first, first + height)
+        cols = range(rows.stop, rows.stop + width)
+        self._next_id = cols.stop
+
+        for i, lit in enumerate(lits):
+            row, col = divmod(i, width)
+            self.add_clause([-lit, rows[row]])
+            self.add_clause([-lit, cols[col]])
+        for selectors in (rows, cols):
+            for a, b in combinations(selectors, 2):
+                self.add_clause([-a, -b])
 
     # ----- Giải & truy xuất -----
 
@@ -79,17 +110,23 @@ class SATWrapper:
             timer = threading.Timer(time_budget, self._solver.interrupt)
             timer.start()
             try:
+                started = time.perf_counter()
                 result = self._solver.solve_limited(
                     assumptions=assumptions or [],
                     expect_interrupt=True,
                 )
             finally:
+                self.search_time_s += time.perf_counter() - started
                 timer.cancel()
             if result is None:
                 self._solver.clear_interrupt()
             return result
         else:
-            return self._solver.solve(assumptions=assumptions or [])
+            started = time.perf_counter()
+            try:
+                return self._solver.solve(assumptions=assumptions or [])
+            finally:
+                self.search_time_s += time.perf_counter() - started
 
     def get_model(self) -> set[str]:
         """Trả về tập tên biến mang giá trị TRUE trong nghiệm cuối."""
@@ -111,10 +148,11 @@ class SATWrapper:
     def reset(self):
         """Xoá toàn bộ solver, bắt đầu lại từ đầu."""
         self._solver.delete()
-        self._solver = Glucose4()
+        self._solver = self._engine()
         self._var_map.clear()
         self._rev_map.clear()
         self._next_id = 1
+        self.search_time_s = 0.0
 
     def delete(self):
         """Giải phóng tài nguyên C++ của solver."""

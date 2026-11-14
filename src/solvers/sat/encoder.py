@@ -19,8 +19,8 @@ tạo lại solver.
 """
 
 from __future__ import annotations
-from data_parser import FJSPInstance
-from sat_wrapper import SATWrapper
+from common.data_parser import FJSPInstance
+from .wrapper import SATWrapper
 
 
 class FJSPEncoder:
@@ -70,7 +70,6 @@ class FJSPEncoder:
         H = self.H_max
         ops = self.inst.operations
         pt = self.inst.processing_times
-
         # --- 3. Order encoding of time ---
         for i in ops:
             for t in range(H):
@@ -96,7 +95,7 @@ class FJSPEncoder:
                                        self._s(i, t - p)])
                     self.w.add_clause([-self._m(i, k),  self._f(i, t),
                                       -self._s(i, t - p)])
-
+        
         # --- 4. Ràng buộc Job & Máy ---
 
         # Precedence
@@ -104,12 +103,12 @@ class FJSPEncoder:
             for t in range(H + 1):
                 # s_{j,t} → f_{i,t}
                 self.w.add_clause([-self._s(op_j, t), self._f(op_i, t)])
-
+        
         # Exactly-one machine
         for i in ops:
             available = [k for k in self.inst.machines if k in pt[i]]
             self.w.add_exactly_one([self._m(i, k) for k in available])
-
+        
         # Machine assignment → activity
         for i in ops:
             available = [k for k in self.inst.machines if k in pt[i]]
@@ -118,18 +117,18 @@ class FJSPEncoder:
                     # m_{i,k} ∧ r_{i,t} → a_{i,k,t}
                     self.w.add_clause([-self._m(i, k), -self._r(i, t),
                                        self._a(i, k, t)])
-
+        
         # Capacity: tối đa 1 op trên mỗi máy mỗi slot
+        # Mỗi máy có thể rảnh hoặc chạy một nguyên công trong slot t.
         for k in self.inst.machines:
             ops_k = self._ops_per_machine.get(k, [])
-            for t in range(H):
-                for idx_i in range(len(ops_k)):
-                    for idx_j in range(idx_i + 1, len(ops_k)):
-                        self.w.add_clause([
-                            -self._a(ops_k[idx_i], k, t),
-                            -self._a(ops_k[idx_j], k, t),
-                        ])
+            if len(ops_k) < 2:
+                continue
 
+            for t in range(H):
+                activity_lits = [self._a(op, k, t) for op in ops_k]
+                self.w.add_at_most_one(activity_lits)
+        
     # ==================================================================
     #  Incremental deadline
     # ==================================================================

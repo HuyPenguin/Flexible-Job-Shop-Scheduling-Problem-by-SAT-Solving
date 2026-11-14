@@ -1,0 +1,13 @@
+solver,dataset,instance,best_makespan,total_time_s,optimal
+sat,brandimarte,mk01,40,0.1709534999972675,true
+sat,brandimarte,mk02,null,60.22852619999321,true
+sat,brandimarte,mk03,204,63.82499149997602,true
+sat,brandimarte,mk04,60,4.006441400008043,true
+sat,brandimarte,mk05,null,60.68223730000318,true
+sat,brandimarte,mk06,null,60.481793799990555,true
+sat,brandimarte,mk07,null,60.62770099999034,true
+sat,brandimarte,mk08,557,70.70666679998976,false
+sat,brandimarte,mk09,357,68.84526190001634,false
+sat,brandimarte,mk10,null,64.05655070001376,true
+sat,brandimarte,mk11,null,66.02454389998456,true
+sat,brandimarte,mk12,571,67.8779424999957,false

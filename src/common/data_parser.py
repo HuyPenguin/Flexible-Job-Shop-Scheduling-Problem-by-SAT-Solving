@@ -111,11 +111,45 @@ def parse_fjsp_data(file_path: str) -> FJSPInstance:
 #  Bounds
 # ---------------------------------------------------------------------------
 
+def _greedy_upper_bound(instance: FJSPInstance) -> int:
+    """Lập lịch bằng cách chọn cặp (nguyên công sẵn sàng, máy) kết thúc sớm nhất."""
+    pt = instance.processing_times
+    successors = {op: [] for op in instance.operations}
+    pending = dict.fromkeys(instance.operations, 0)
+    ready_time = dict.fromkeys(instance.operations, 0)
+    machine_free = dict.fromkeys(instance.machines, 0)
+    for before, after in instance.job_precedences:
+        successors[before].append(after)
+        pending[after] += 1
+
+    ready = {op for op in instance.operations if pending[op] == 0}
+    scheduled = 0
+    while ready:
+        end, op, machine = min(
+            (max(ready_time[op], machine_free[k]) + duration, op, k)
+            for op in ready
+            for k, duration in pt[op].items()
+        )
+        ready.remove(op)
+        machine_free[machine] = end
+        scheduled += 1
+        for after in successors[op]:
+            ready_time[after] = max(ready_time[after], end)
+            pending[after] -= 1
+            if pending[after] == 0:
+                ready.add(after)
+
+    if scheduled < len(instance.operations):
+        # Có chu trình: dùng horizon tuần tự cũ để SAT xử lý trường hợp vô nghiệm.
+        return sum(max(pt[op].values()) for op in instance.operations)
+    return max(machine_free.values(), default=0)
+
+
 def calculate_initial_bounds(instance: FJSPInstance) -> Tuple[int, int]:
     """Trả về (LB, UB) cho makespan.
 
     LB = max(longest_job, ceil(total_work / num_machines))
-    UB = tổng thời gian xử lý tối đa của tất cả nguyên công
+    UB = makespan của lịch greedy
     """
     pt = instance.processing_times
 
@@ -136,7 +170,6 @@ def calculate_initial_bounds(instance: FJSPInstance) -> Tuple[int, int]:
 
     lb = max(lb_job, lb_machine)
 
-    # UB — tất cả tuần tự, trên máy chậm nhất
-    ub = sum(max(pt[op].values()) for op in instance.operations)
-
+    ub = _greedy_upper_bound(instance)
+    print(f"Initial bounds: LB={lb}, UB={ub}")
     return lb, ub

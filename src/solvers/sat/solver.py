@@ -1,6 +1,6 @@
 """Incremental SAT with a shared per-instance time budget."""
 import time
-from common.data_parser import FJSPInstance, calculate_initial_bounds
+from common.data_parser import FJSPInstance, calculate_lower_bound
 from common.result import SolveConfig, SolveResult
 from common.schedule import get_makespan
 from .decoder import decode_sat_model
@@ -13,7 +13,9 @@ def solve(instance: FJSPInstance, config: SolveConfig | None = None) -> SolveRes
     if config.time_limit_s is not None and config.time_limit_s <= 0:
         raise ValueError('time_limit_s must be positive')
     started = time.perf_counter()
-    lb, ub = calculate_initial_bounds(instance)
+    lb = config.lower_bound if config.lower_bound is not None else calculate_lower_bound(instance)
+    ub = config.horizon(instance)
+    print(f"Initial bounds: LB={lb}, UB={ub}")
     best_schedule = None
     best_makespan = None
     iterations = 0
@@ -34,6 +36,7 @@ def solve(instance: FJSPInstance, config: SolveConfig | None = None) -> SolveRes
             iterations += 1
             # Reserve half the remaining SAT time for fallback if this probe stalls.
             budget = remaining if sequential else remaining / 5
+            budget = min(budget, 60.0)  # Avoid long waits for a single SAT call.
             print(f"Probing horizon {horizon} with {budget:.3f}s remaining", flush=True)
             sat = encoder.solve_for(horizon, time_budget=budget)
             if sat is None:

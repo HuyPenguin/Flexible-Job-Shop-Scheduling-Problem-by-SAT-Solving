@@ -21,7 +21,7 @@ def solve(
     each eligible operation-machine pair and exactly one selected alternative.
     """
     config = config or SolveConfig()
-    horizon = validate_instance(instance, config)
+    validate_instance(instance, config)
     if not instance.operations:
         return empty_result("cp_sat")
 
@@ -34,6 +34,7 @@ def solve(
         ) from exc
 
     started = perf_counter()
+    horizon = config.horizon(instance)
     model = cp_model.CpModel()
     starts = {}
     ends = {}
@@ -72,7 +73,7 @@ def solve(
         if len(intervals) > 1:
             model.AddNoOverlap(intervals)
 
-    makespan = model.NewIntVar(0, horizon, "makespan")
+    makespan = model.NewIntVar(config.lower_bound or 0, horizon, "makespan")
     for operation in instance.operations:
         model.Add(ends[operation] <= makespan)
     model.Minimize(makespan)

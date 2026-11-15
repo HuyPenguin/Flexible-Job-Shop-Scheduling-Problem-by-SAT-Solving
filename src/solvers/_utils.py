@@ -6,8 +6,8 @@ from common.data_parser import FJSPInstance
 from common.result import SolveConfig, SolveResult
 
 
-def validate_instance(instance: FJSPInstance, config: SolveConfig) -> int:
-    """Validate solver inputs and return a feasible serial-schedule horizon."""
+def validate_instance(instance: FJSPInstance, config: SolveConfig) -> None:
+    """Validate solver inputs."""
     if config.time_limit_s is not None and (
         not isfinite(config.time_limit_s) or config.time_limit_s <= 0
     ):
@@ -18,7 +18,6 @@ def validate_instance(instance: FJSPInstance, config: SolveConfig) -> int:
         raise ValueError("instance.operations contains duplicate operations")
 
     known_operations = set(operations)
-    horizon = 0
     for operation in operations:
         alternatives = instance.processing_times.get(operation)
         if not alternatives:
@@ -32,7 +31,6 @@ def validate_instance(instance: FJSPInstance, config: SolveConfig) -> int:
                 raise ValueError(
                     f"operation {operation} has invalid processing time {duration!r}"
                 )
-        horizon += max(alternatives.values())
 
     successors = {operation: [] for operation in operations}
     indegree = dict.fromkeys(operations, 0)
@@ -53,8 +51,6 @@ def validate_instance(instance: FJSPInstance, config: SolveConfig) -> int:
                 ready.append(successor)
     if visited != len(operations):
         raise ValueError("job_precedences contains a cycle")
-
-    return horizon
 
 
 def empty_result(solver_name: str) -> SolveResult:

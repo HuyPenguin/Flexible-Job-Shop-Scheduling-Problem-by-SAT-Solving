@@ -111,7 +111,7 @@ def parse_fjsp_data(file_path: str) -> FJSPInstance:
 #  Bounds
 # ---------------------------------------------------------------------------
 
-def _greedy_upper_bound(instance: FJSPInstance) -> int:
+def calculate_upper_bound(instance: FJSPInstance) -> int:
     """Lập lịch bằng cách chọn cặp (nguyên công sẵn sàng, máy) kết thúc sớm nhất."""
     pt = instance.processing_times
     successors = {op: [] for op in instance.operations}
@@ -145,12 +145,10 @@ def _greedy_upper_bound(instance: FJSPInstance) -> int:
     return max(machine_free.values(), default=0)
 
 
-def calculate_initial_bounds(instance: FJSPInstance) -> Tuple[int, int]:
-    """Trả về (LB, UB) cho makespan.
-
-    LB = max(longest_job, ceil(total_work / num_machines))
-    UB = makespan của lịch greedy
-    """
+def calculate_lower_bound(instance: FJSPInstance) -> int:
+    """Cận dưới makespan cho SAT dựa trên chuỗi job và tải trung bình của máy."""
+    if not instance.operations:
+        return 0
     pt = instance.processing_times
 
     # Nhóm nguyên công theo job_id
@@ -168,8 +166,4 @@ def calculate_initial_bounds(instance: FJSPInstance) -> Tuple[int, int]:
     total_min_work = sum(min(pt[op].values()) for op in instance.operations)
     lb_machine = -(-total_min_work // instance.num_machines)
 
-    lb = max(lb_job, lb_machine)
-
-    ub = _greedy_upper_bound(instance)
-    print(f"Initial bounds: LB={lb}, UB={ub}")
-    return lb, ub
+    return max(lb_job, lb_machine)

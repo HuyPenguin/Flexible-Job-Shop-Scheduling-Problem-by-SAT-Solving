@@ -20,7 +20,7 @@ def solve(
     Requires ``docplex``, the CPLEX Python API, and a valid CPLEX license.
     """
     config = config or SolveConfig()
-    horizon = validate_instance(instance, config)
+    validate_instance(instance, config)
     if not instance.operations:
         return empty_result("cplex_mip")
 
@@ -33,6 +33,7 @@ def solve(
         ) from exc
 
     started = perf_counter()
+    horizon = config.horizon(instance)
     model = Model(name="fjssp-cplex-mip")
     model.log_output = False
 
@@ -52,7 +53,7 @@ def solve(
         )
         for operation in instance.operations
     }
-    makespan = model.integer_var(lb=0, ub=horizon, name="makespan")
+    makespan = model.integer_var(lb=config.lower_bound or 0, ub=horizon, name="makespan")
     assignments = {}
 
     for operation in instance.operations:
@@ -97,17 +98,15 @@ def solve(
                 )
                 first_assignment = assignments[first, machine]
                 second_assignment = assignments[second, machine]
-                first_duration = instance.processing_times[first][machine]
-                second_duration = instance.processing_times[second][machine]
 
                 model.add_constraint(
-                    starts[first] + first_duration
+                    completions[first]
                     <= starts[second]
                     + horizon * (1 - first_before_second)
                     + horizon * (2 - first_assignment - second_assignment)
                 )
                 model.add_constraint(
-                    starts[second] + second_duration
+                    completions[second]
                     <= starts[first]
                     + horizon * first_before_second
                     + horizon * (2 - first_assignment - second_assignment)

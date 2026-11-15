@@ -20,7 +20,7 @@ def solve(
     Requires ``docplex`` and an accessible IBM ILOG CP Optimizer executable.
     """
     config = config or SolveConfig()
-    horizon = validate_instance(instance, config)
+    validate_instance(instance, config)
     if not instance.operations:
         return empty_result("cpoptimizer")
 
@@ -32,6 +32,7 @@ def solve(
         ) from exc
 
     started = perf_counter()
+    horizon = config.horizon(instance)
     model = CpoModel(name="fjssp-cp")
     masters = {}
     alternatives = {}
@@ -66,7 +67,10 @@ def solve(
         if len(intervals) > 1:
             model.add(model.no_overlap(intervals))
 
-    model.minimize(model.max([model.end_of(masters[op]) for op in instance.operations]))
+    makespan = model.max([model.end_of(masters[op]) for op in instance.operations])
+    if config.lower_bound is not None:
+        model.add(makespan >= config.lower_bound)
+    model.minimize(makespan)
     if config.time_limit_s is not None:
         model.set_parameters(TimeLimit=config.time_limit_s)
 

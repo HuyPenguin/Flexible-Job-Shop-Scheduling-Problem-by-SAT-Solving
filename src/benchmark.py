@@ -26,12 +26,17 @@ def run_benchmark(records, solvers, time_limit, output):
             dataset = str(PurePosixPath(record['path']).parent)
             optimum = record.get('optimum')
             bounds = record.get('bounds')
+            config = SolveConfig(
+                time_limit_s=time_limit,
+                lower_bound=bounds['lower'] if bounds is not None else None,
+                upper_bound=bounds['upper'] if bounds is not None else None,
+            )
+            instance = parse_fjsp_data(str(INSTANCES / record['path']))
             for name, solve in solvers.items():
-                instance = parse_fjsp_data(str(INSTANCES / record['path']))
                 started = perf_counter()
                 optimal = 'false'
                 try:
-                    result = solve(instance, SolveConfig(time_limit_s=time_limit))
+                    result = solve(instance, config)
                 except Exception as exc:
                     elapsed = perf_counter() - started
                     failures += 1

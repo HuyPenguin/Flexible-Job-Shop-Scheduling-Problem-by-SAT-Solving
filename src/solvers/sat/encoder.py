@@ -56,9 +56,6 @@ class FJSPEncoder:
     def _m(self, i: tuple, k: int) -> int:
         return self.w.get_var_id(f"m_{i[0]}_{i[1]}_{k}")
 
-    def _r(self, i: tuple, t: int) -> int:
-        return self.w.get_var_id(f"r_{i[0]}_{i[1]}_{t}")
-
     def _a(self, i: tuple, k: int, t: int) -> int:
         return self.w.get_var_id(f"a_{i[0]}_{i[1]}_{k}_{t}")
 
@@ -77,8 +74,6 @@ class FJSPEncoder:
                 self.w.add_clause([-self._s(i, t), self._s(i, t + 1)])
                 # 1b  f_{i,t} → f_{i,t+1}
                 self.w.add_clause([-self._f(i, t), self._f(i, t + 1)])
-                # 3   s_{i,t} ∧ ¬f_{i,t} → r_{i,t}
-                self.w.add_clause([-self._s(i, t), self._f(i, t), self._r(i, t)])
 
             # Rule 2 — cho mỗi máy khả dụng
             available = [k for k in self.inst.machines if k in pt[i]]
@@ -114,9 +109,12 @@ class FJSPEncoder:
             available = [k for k in self.inst.machines if k in pt[i]]
             for k in available:
                 for t in range(H):
-                    # m_{i,k} ∧ r_{i,t} → a_{i,k,t}
-                    self.w.add_clause([-self._m(i, k), -self._r(i, t),
-                                       self._a(i, k, t)])
+                    # Hai ràng buộc cũ dùng biến trung gian r (đang chạy):
+                    #   (1) s_{i,t} ∧ ¬f_{i,t} → r_{i,t}
+                    #   (2) m_{i,k} ∧ r_{i,t} → a_{i,k,t}
+                    # Khử r: m_{i,k} ∧ s_{i,t} ∧ ¬f_{i,t} → a_{i,k,t}
+                    self.w.add_clause([-self._m(i, k), -self._s(i, t),
+                                       self._f(i, t), self._a(i, k, t)])
         
         # Capacity: tối đa 1 op trên mỗi máy mỗi slot
         # Mỗi máy có thể rảnh hoặc chạy một nguyên công trong slot t.

@@ -33,7 +33,7 @@ def solve(instance: FJSPInstance, config: SolveConfig | None = None) -> SolveRes
             horizon = ub if sequential else (lb + ub) // 2
             iterations += 1
             # Reserve half the remaining SAT time for fallback if this probe stalls.
-            budget = remaining if sequential else remaining / 2
+            budget = remaining if sequential else remaining / 5
             print(f"Probing horizon {horizon} with {budget:.3f}s remaining", flush=True)
             sat = encoder.solve_for(horizon, time_budget=budget)
             if sat is None:

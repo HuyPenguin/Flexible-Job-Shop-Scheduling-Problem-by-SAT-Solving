@@ -12,7 +12,7 @@ from importlib import import_module
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('instance_file')
-    parser.add_argument('--solver', choices=['sat', 'paper'], default='sat')
+    parser.add_argument('--solver', choices=['sat'], default='sat')
     parser.add_argument('--time-limit', type=float,
                         help='Cumulative SAT search budget in seconds (default: unlimited)')
     parser.add_argument('--output', type=Path, help='Write structured JSON result')
@@ -20,7 +20,7 @@ def main():
     if args.time_limit is not None and args.time_limit <= 0:
         parser.error('--time-limit must be positive')
     instance = parse_fjsp_data(args.instance_file)
-    solve = import_module('test.solver' if args.solver == 'paper' else 'solvers.sat.solver').solve
+    solve = import_module('solvers.sat.solver').solve
     result = solve(instance, SolveConfig(time_limit_s=args.time_limit))
     print(f'Instance: {args.instance_file}')
     print(f'Status: {result.status} ({result.termination_reason})')

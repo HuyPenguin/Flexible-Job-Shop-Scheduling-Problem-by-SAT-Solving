@@ -14,8 +14,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('instance_file')
     parser.add_argument(
-        '--solver', choices=['sat', 'cp', 'mip', 'cp-sat', 'paper'], default='sat'
+        '--solver', choices=['sat', 'cp', 'mip', 'cp-sat'], default='sat'
     )
+
     parser.add_argument('--time-limit', type=float,
                         help='Solver search budget in seconds (default: unlimited)')
     parser.add_argument('--output', type=Path, help='Write structured JSON result')
@@ -33,6 +34,7 @@ def main():
         'paper': 'test.solver',
     }
     solve = import_module(solver_modules[args.solver]).solve
+
     result = solve(instance, SolveConfig(time_limit_s=args.time_limit))
     print(f'Instance: {args.instance_file}')
     print(f'Status: {result.status} ({result.termination_reason})')

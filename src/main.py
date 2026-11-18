@@ -14,7 +14,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('instance_file')
     parser.add_argument(
-        '--solver', choices=['sat', 'cp', 'mip', 'cp-sat'], default='sat'
+        '--solver', choices=['sat', 'cp', 'mip', 'cp-sat', 'gurobi', 'paper'], default='sat'
     )
 
     parser.add_argument('--time-limit', type=float,
@@ -31,6 +31,7 @@ def main():
         'cp': 'solvers.cp.solver',
         'mip': 'solvers.mip.solver',
         'cp-sat': 'solvers.cp_sat.solver',
+        'gurobi': 'solvers.gurobi.solver',
         'paper': 'test.solver',
     }
     solve = import_module(solver_modules[args.solver]).solve

@@ -21,7 +21,7 @@ def run_benchmark(records, solvers, time_limit, output):
     failures = 0
     with output.open('w', encoding='utf-8', newline='') as stream:
         writer = csv.writer(stream)
-        writer.writerow(['solver', 'dataset', 'instance', 'best_makespan', 'total_time_s', 'optimal'])
+        writer.writerow(['solver', 'dataset', 'instance', 'best_makespan', 'total_time_s', 'optimal', 'status', 'lower_bound', 'termination_reason'])
         for record in records:
             dataset = str(PurePosixPath(record['path']).parent)
             optimum = record.get('optimum')
@@ -45,17 +45,19 @@ def run_benchmark(records, solvers, time_limit, output):
                 else:
                     elapsed = result.total_time_s
                     value = result.objective
-                    if value is not None:
-                        if bounds is None:
-                            optimal = 'true' if value == optimum else 'false'
-                        elif bounds['lower'] <= value <= bounds['upper']:
-                            optimal = 'new'
-                        else:
-                            # Outside the interval, compare null with the catalog optimum.
-                            value = None
-                            optimal = 'true' if optimum is None else 'false'
+                    status = result.status
+                    result_lb = result.lower_bound
+                    termination = result.termination_reason
+                    # Only a proven optimal solver status supports 'true'.
+                    optimal = 'true' if status == 'OPTIMAL' else 'false'
+                    if value is not None and optimum is not None and value < optimum:
+                        print(f"New best compared with catalog: {name} {record['path']} "
+                              f"({value} < {optimum})", file=sys.stderr)
                 writer.writerow([name, dataset, record['name'],
-                                 'null' if value is None else value, elapsed, optimal])
+                                 'null' if value is None else value,
+                                 elapsed, optimal, status,
+                                 'null' if result_lb is None else result_lb,
+                                 termination])
                 stream.flush()
     return failures
 
@@ -64,6 +66,7 @@ def main():
     modules = {p.parent.name: f'solvers.{p.parent.name}.solver'
                for p in (SRC / 'solvers').glob('*/solver.py')}
     modules['paper'] = 'test.solver'
+    modules['gurobi'] = 'solvers.gurobi.solver'
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--solvers', nargs='+', choices=sorted(modules), default=['sat'])
     parser.add_argument('--datasets', '--dataset', nargs='+', required=True,
